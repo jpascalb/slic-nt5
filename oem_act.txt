@@ -1,0 +1,78 @@
+# VirtualBox OEM SLP 1.0 Activation Guide (Dell - NT 5.1 & NT 5.2)
+
+This guide explains how to achieve offline, permanent OEM SLP 1.0 activation for Windows NT 5.1 (XP x86) and NT 5.2 (XP x64 / Server 2003) inside an Oracle VirtualBox machine using Dell OEMBIOS files and generated master keys.
+
+## Prerequisites
+
+1. VirtualBox installed on your host machine.
+2. A configured Virtual Machine (VM) with Windows NT 5.1 or NT 5.2 installed.
+3. The correct set of 4 Dell OEMBIOS files (OEMBIOS.BIN, OEMBIOS.DAT, OEMBIOS.CAT, OEMBIOS.SIG).
+   * Important: NT 5.1 (32-bit) and NT 5.2 (64-bit/Server 2003) use different OEMBIOS sets. Make sure you use the matching set for your OS architecture.
+4. An OEM SLP master key matching your specific OS edition, generated via umskt.
+
+---
+
+## Step 1: Inject Dell DMI Strings into VirtualBox (Host)
+
+You must force VirtualBox to emulate a physical Dell motherboard BIOS. 
+
+1. Completely close VirtualBox (ensure no background VBox processes are running).
+2. Open your Host command line interface (CMD/PowerShell on Windows as Administrator, or Terminal on Linux/Mac).
+3. Run the commands below corresponding to your guest OS architecture. Replace "Your_Dell_VM_Name" with the exact name of your virtual machine.
+
+### For 32-bit (x86) Architectures (NT 5.1 XP / NT 5.2 Server 2003)
+
+cd "C:\Program Files\Oracle\VirtualBox"
+
+vboxmanage setextradata "Your_Dell_VM_Name" "VBoxInternal/Devices/pcbios/0/Config/DmiBIOSVendor" "Dell Computer Corporation"
+vboxmanage setextradata "Your_Dell_VM_Name" "VBoxInternal/Devices/pcbios/0/Config/DmiSystemVendor" "Dell Computer Corporation"
+vboxmanage setextradata "Your_Dell_VM_Name" "VBoxInternal/Devices/pcbios/0/Config/DmiSystemVersion" "Dell System"
+
+
+### For 64-bit (x64) Architectures (NT 5.2 XP x64 / Server 2003 x64)
+
+cd "C:\Program Files\Oracle\VirtualBox"
+
+vboxmanage setextradata "Your_Dell_VM_Name" "VBoxInternal/Devices/pcbios/0/Config/DmiBIOSVendor" "Dell Inc."
+vboxmanage setextradata "Your_Dell_VM_Name" "VBoxInternal/Devices/pcbios/0/Config/DmiSystemVendor" "Dell Inc."
+vboxmanage setextradata "Your_Dell_VM_Name" "VBoxInternal/Devices/pcbios/0/Config/DmiSystemProductName" "OptiPlex"
+vboxmanage setextradata "Your_Dell_VM_Name" "VBoxInternal/Devices/pcbios/0/Config/DmiSystemVersion" "Dell System"
+
+
+---
+
+## Step 2: Install the OEMBIOS Files (Guest)
+
+Since the Windows Product Activation (WPA) subsystem runs natively, all files must be placed exclusively in native system folders. Do not copy any files to SysWOW64 on 64-bit systems, as the 64-bit kernel ignores them for licensing purposes.
+
+1. Start your Virtual Machine and repeatedly press F8 before the Windows boot screen appears. Select Safe Mode.
+2. Once logged in, open Windows Explorer, go to Tools > Folder Options > View, and:
+   * Select "Show hidden files and folders".
+   * Uncheck "Hide protected operating system files (Recommended)".
+3. Copy your 4 OEMBIOS.* files into the following native directories:
+   * C:\Windows\System32\
+   * C:\Windows\System32\dllcache\ (Failsafe backup; prevents Windows File Protection from reverting your changes).
+4. Copy only the OEMBIOS.CAT file into the native Cryptographic Catalog database folder:
+   * C:\Windows\System32\CatRoot\{F750E6C3-38EE-11D1-85E5-00C04FC295EE}\
+
+---
+
+## Step 3: Input the Generated Dell OEM SLP Key
+
+To trigger the offline SLP handshake, you must change your current product key to a valid Dell master key. 
+
+1. Generate the matching OEM SLP key for your specific Windows edition using umskt.
+2. If you are already inside Windows, open the guest command prompt (cmd) and run the following command to launch the Activation Wizard:
+   oobe/msoobe /a
+3. Choose the option to activate via telephone, click "Change Product Key", type your generated key, and click Update.
+
+---
+
+## Step 4: Verification
+
+Restart your Virtual Machine normally. 
+
+To verify that the system is fully activated offline, open the Run dialog (Win + R), type the following command, and hit Enter:
+oobe/msoobe /a
+
+A window should appear stating: "Windows is already activated. Click OK to exit."
